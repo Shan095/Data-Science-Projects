@@ -126,7 +126,7 @@ def show_age():
                       profession=occupation_type,
                       education=name_education_type,
                       family=name_family_status)
-        return render_template('dashboard.html')
+        return render_template('model.html')
 
 y_train = pd.read_csv('y_train_catboost.csv', sep=',')
 data['months_employed']=-data['days_employed']/12
