@@ -1,81 +1,126 @@
 # -*- coding: utf-8 -*-
-from flask import Flask, render_template, jsonify
-import json
-import requests
+import numpy as np
+import pandas as pd
+import plotly.express as px
+from flask import Flask, request, render_template
+from joblib import load
 
 app = Flask(__name__)
+model = load('catboost_model_30f.joblib')
+features=model.feature_names_
+print(features)
 
-METEO_API_KEY = "3ec820d083861fa610d0adf67676854b"
+@app.route('/', methods=['GET', 'POST'])  # une méthode de recevoir les données, à travers le serveur
+def pred_model():
+    return render_template("test.html")
 
-if METEO_API_KEY is None:
-    # URL de test :
-    METEO_API_URL = "https://samples.openweathermap.org/data/2.5/forecast?lat=0&lon=0&appid=xxx"
-else:
-    # URL avec clé :
-    METEO_API_URL = "https://api.openweathermap.org/data/2.5/forecast?lat=48.883587&lon=2.333779&appid=" + METEO_API_KEY
+@app.route('/model', methods=['GET', 'POST'])
+def predict():
+    request_type_str = request.method
+    if request_type_str == 'GET':
+        return render_template('model.html')
+    else:
+        amount_credit = request.form['amt_credit']
+        amt_annuity=request.form['amt_annuity']
+        credit_length=request.form['credit_length']
+        ext_source_2=request.form['ext_source_2']
+        ext_source_3=request.form['ext_source_3']
+        ext_source_1=request.form['ext_source_1']
+        age=request.form['age']
+        months_employed=request.form['months_employed']
+        name_education_type=request.form['name_education_type']
+        month_employed=request.form['months_employed']
+        amt_credit=request.form['amt_credit']
+        amt_goods_price=request.form['amt_goods_price']
+        amt_annuity=request.form['amt_annuity']
+        bureau_days_credit_max=request.form['bureau_days_credit_max']
+        days_id_publish=request.form['days_id_publish']
+        bureau_days_credit_enddate_max=request.form['bureau_days_credit_enddate_max']
+        days_last_phone_change=request.form['days_last_phone_change']
+        bureau_days_credit_mean=request.form['bureau_days_credit_mean']
+        occupation_type=request.form['occupation_type']
+        ratio_annuite_income=request.form['ratio_annuite_income']
+        days_registration=request.form['days_registration']
+        occupation_type=request.form['occupation_type']
+        code_gender=request.form['code_gender']
+        region_population_relative=request.form['region_population_relative']
+        bureau_amt_credit_sum_debt_mean=request.form['bureau_amt_credit_sum_debt_mean']
+        income_per_person=request.form['income_per_person']
+        own_car_age=request.form['own_car_age']
+        bureau_amt_credit_sum_mean=request.form['bureau_amt_credit_sum_mean']
+        bureau_days_credit_sum=request.form['bureau_days_credit_sum']
+        bureau_amt_credit_sum_debt_max=request.form['bureau_amt_credit_sum_debt_max']
+        bureau_amt_credit_sum_max=request.form['bureau_amt_credit_sum_max']
+        bureau_amt_credit_sum_min=request.form['bureau_amt_credit_sum_min']
+        name_income_type=request.form['name_income_type']
+        age=-float(age)*365
+        months_employed=-float(month_employed)*30
+        days_id_publish=-float(days_id_publish)
+        features_input=[ext_source_2, ext_source_3, credit_length, ext_source_1, age, months_employed, name_education_type, amt_credit, amt_goods_price, amt_annuity, bureau_days_credit_max, days_id_publish, bureau_days_credit_enddate_max, days_last_phone_change, bureau_days_credit_mean, occupation_type, ratio_annuite_income, days_registration, code_gender, region_population_relative, bureau_amt_credit_sum_debt_mean, income_per_person, own_car_age, bureau_amt_credit_sum_mean, bureau_days_credit_sum, bureau_amt_credit_sum_debt_max, bureau_amt_credit_sum_max, bureau_amt_credit_sum_min, name_income_type]
+        test_np_input = np.array([0.5718071677924758, 0.5262949398096192, 39.55696202531646,
+                                       0.33796326232743, -12932, -2569.0, 'Higher education', 3150000.0,
+                                      3150000.0, 79632.0, -259.0, -3828, 1204.0, -863.0, -1381.25,
+                                      'Sales staff', 0.18243298969072164, -6555.0, 1, 0.025164, 0.0,
+                                     436500.0, 3.0, 564068.25, -11050.0, 0.0, 931500.0, 0.0,
+                                     'Commercial associate'])
+        preds = model.predict_proba(features_input)
+        preds_as_str = str(preds[1])
+        return preds_as_str
 
-@app.route("/")
-def hello():
-    return "Hello World!"
+@app.route('/birth', methods=['GET', 'POST'])
+def show_age():
+    request_type_str = request.method
+    if request_type_str == 'GET':
+        return render_template('model.html')
+    else:
+        age=request.form['age']
+        make_picture('X_train_catboost.csv', age)
+        return render_template('model.html')
 
-@app.route('/dashboard/')
-def dashboard():
-    return render_template("dashboard.html")
 
-@app.route('/api/meteo/')
-def meteo():
-    response = requests.get(METEO_API_URL)
-    content = json.loads(response.content.decode('utf-8'))
 
-    if response.status_code != 200:
-        return jsonify({
-            'status': 'error',
-            'message': 'La requête à l\'API météo n\'a pas fonctionné. Voici le message renvoyé par l\'API : {}'.format(content['message'])
-        }), 500
 
-    data = [] # On initialise une liste vide
-    for prev in content["list"]:
-        datetime = prev['dt'] * 1000
-        temperature = prev['main']['temp'] - 273.15 # Conversion de Kelvin en °c
-        temperature = round(temperature, 2)
-        data.append([datetime, temperature])
+y_train = pd.read_csv('y_train_catboost.csv', sep=',')
 
-    return jsonify({
-        'status': 'ok',
-        'data': data
-    })
-from functions import extract_keywords
 
-NEWS_API_KEY = 'bd3713e2e8ee47b885791b9a8588111c' # Remplacez None par votre clé NEWSAPI, par exemple "4116306b167e49x993017f089862d4xx"
+def make_picture(training_data_filename, np_arr):
+    # Plot training data with model
+    data = pd.read_csv(training_data_filename, sep=',')
+    ages = -(data['days_birth'] / 365)
+    ages = round(ages, 0)
+    print(ages)
+    income_per_person = data['income_per_person']
+    income_per_person = round(income_per_person, 0)
+    train_targets = y_train['target']
+    fig = px.box(x=train_targets, y=ages, title="distribution of age by target", labels={'x': 'Target', 'y': 'Age'})
+    fig.add_scatter(x=[0, 1], y=[np_arr,np_arr],mode="markers", marker=dict(size=20, color="LightSeaGreen"), showlegend=True)
+    fig.show()
 
-if NEWS_API_KEY is None:
-    # URL de test :
-    NEWS_API_URL = "https://s3-eu-west-1.amazonaws.com/course.oc-static.com/courses/4525361/top-headlines.json" # exemple de JSON
-else:
-    # URL avec clé :
-    NEWS_API_URL = "https://newsapi.org/v2/top-headlines?sortBy=publishedAt&pageSize=100&language=fr&apiKey=" + NEWS_API_KEY
+def make_picture_ratio(training_data_filename, np_arr):
+    # Plot training data with model
+    data = pd.read_csv(training_data_filename, sep=',')
+    ages = -(data['days_birth'] / 365)
+    ages = round(ages, 0)
+    print(ages)
+    income_per_person = data['income_per_person']
+    income_per_person = round(income_per_person, 0)
+    train_targets = y_train['target']
+    fig = px.box(x=train_targets, y=ages, title="distribution of age by target", labels={'x': 'Target', 'y': 'Age'})
+    fig.add_scatter(x=[0, 1], y=[np_arr,np_arr],mode="markers", marker=dict(size=20, color="LightSeaGreen"), showlegend=True)
+    fig.show()
 
-@app.route('/api/news/')
-def get_news():
+def floats_string_to_np_arr(s: str) -> float:
+    try:
+        floating = float(s)
+    except ValueError:
+        floating = [float(x) for x in s.split(',')]
+    arr = np.array(floating)
+    # arr = floating.reshape(-1, 1)
+    print("my arr")
+    print(arr)
+    print(type(arr[0]))
+    return arr
 
-    response = requests.get(NEWS_API_URL)
 
-    content = json.loads(response.content.decode('utf-8'))
-
-    if response.status_code != 200:
-        return jsonify({
-            'status': 'error',
-            'message': 'La requête à l\'API des articles d\'actualité n\'a pas fonctionné. Voici le message renvoyé par l\'API : {}'.format(content['message'])
-        }), 500
-
-    keywords, articles = extract_keywords(content["articles"])
-
-    return jsonify({
-        'status'   : 'ok',
-        'data'     :{
-            'keywords' : keywords[:100], # On retourne uniquement les 100 premiers mots
-            'articles' : articles
-        }
-    })
 if __name__ == "__main__":
     app.run(debug=True)
